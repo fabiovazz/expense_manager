@@ -15,6 +15,8 @@ class _ExpensesPage extends State<ExpensesPage> {
   List<Expense> expenses = [];
   final ExpenseDAO _dao = ExpenseDAO();
   bool _isSearching = false;
+  bool _isEditing = false;
+  int? _idExpenseSelected;
   TextEditingController nameExpense = TextEditingController();
   TextEditingController searchExpense = TextEditingController();
   TextEditingController typeExpense = TextEditingController();
@@ -175,24 +177,25 @@ class _ExpensesPage extends State<ExpensesPage> {
                     const Padding(padding: EdgeInsets.only(top: 30)),
                     FilledButton(
                         onPressed: () {
-                          _dao
-                              .insert(Expense(
-                                name: nameExpense.text,
-                                type: typeExpense.text,
-                                amount: formatter.getUnformattedValue(),
-                              ))
-                              .then((value) => getExpenses());
+                          _isEditing ? handleUpdate() : handleAdd();
                         },
                         style: const ButtonStyle(
                           backgroundColor:
                               MaterialStatePropertyAll(Colors.amber),
                         ),
-                        child: const Text(
-                            style: TextStyle(
-                              color: Color.fromRGBO(43, 45, 71, 1),
-                              fontSize: 16,
-                            ),
-                            "Adicionar Despesa")),
+                        child: _isEditing
+                            ? const Text(
+                                style: TextStyle(
+                                  color: Color.fromRGBO(43, 45, 71, 1),
+                                  fontSize: 16,
+                                ),
+                                "Editar Despesa")
+                            : const Text(
+                                style: TextStyle(
+                                  color: Color.fromRGBO(43, 45, 71, 1),
+                                  fontSize: 16,
+                                ),
+                                "Adicionar Despesa")),
                     FilledButton(
                         onPressed: () {
                           _dao.delete().then((value) => getExpenses());
@@ -206,7 +209,7 @@ class _ExpensesPage extends State<ExpensesPage> {
                               color: Color.fromRGBO(43, 45, 71, 1),
                               fontSize: 16,
                             ),
-                            "Deletar Despesas")),
+                            "Deletar Todas Despesas")),
                     const Padding(padding: EdgeInsets.only(top: 30)),
                     Row(
                       children: [
@@ -247,8 +250,8 @@ class _ExpensesPage extends State<ExpensesPage> {
                                   Align(
                                     alignment: const AlignmentDirectional(0, 0),
                                     child: SizedBox(
-                                      width: 200,
-                                      height: 80,
+                                      width: 350,
+                                      height: 50,
                                       child: TextFormField(
                                         keyboardType: TextInputType.name,
                                         onChanged: (value) => {
@@ -293,10 +296,11 @@ class _ExpensesPage extends State<ExpensesPage> {
                     ),
                     const Padding(padding: EdgeInsets.only(top: 20)),
                     SizedBox(
-                      height: expenses.length * 80.0,
+                      width: 350,
+                      height: expenses.length * 70.0,
                       child: listExpenses(),
                     ),
-                    const Padding(padding: EdgeInsets.only(top: 20)),
+                    const Padding(padding: EdgeInsets.only(top: 10)),
                     Text(
                         style: const TextStyle(
                           fontFamily: 'Poppins',
@@ -320,6 +324,42 @@ class _ExpensesPage extends State<ExpensesPage> {
     {
       return totalAmount;
     }
+  }
+
+  handleUpdate() {
+    _dao
+        .update(Expense(
+          id: _idExpenseSelected,
+          name: nameExpense.text,
+          type: typeExpense.text,
+          amount: formatter.getUnformattedValue(),
+        ))
+        .then((value) => {
+              setState(() {
+                _isEditing = false;
+              }),
+              getExpenses()
+            });
+  }
+
+  handleDelete(int? id) {
+    if (id == null) return;
+    _dao.deleteById(id).then((value) => {
+          setState(() {
+            _isEditing = false;
+          }),
+          getExpenses()
+        });
+  }
+
+  handleAdd() {
+    _dao
+        .insert(Expense(
+          name: nameExpense.text,
+          type: typeExpense.text,
+          amount: formatter.getUnformattedValue(),
+        ))
+        .then((value) => getExpenses());
   }
 
   listExpenses() {
@@ -351,18 +391,41 @@ class _ExpensesPage extends State<ExpensesPage> {
                           fontSize: 16,
                         ),
                         'Categoria: ${filteredExpenses[index].type}'),
-                    trailing: Text(
-                        style: const TextStyle(
-                          color: Color.fromRGBO(43, 45, 71, 1),
-                          fontSize: 16,
-                        ),
-                        'R\$ ${filteredExpenses[index].amount}'),
+                    trailing: SizedBox(
+                      width: 120,
+                      height: 20,
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          Text(
+                              style: const TextStyle(
+                                color: Color.fromRGBO(43, 45, 71, 1),
+                                fontSize: 16,
+                              ),
+                              'R\$ ${filteredExpenses[index].amount}'),
+                          IconButton(
+                            onPressed: () {
+                              handleDelete(filteredExpenses[index].id);
+                            },
+                            splashRadius: 15,
+                            alignment: Alignment.center,
+                            iconSize: 20,
+                            padding: EdgeInsets.zero,
+                            color: const Color.fromARGB(255, 255, 0, 0),
+                            icon: const Icon(Icons.delete_rounded),
+                          )
+                        ],
+                      ),
+                    ),
                     onTap: () {
                       setState(() {
+                        _idExpenseSelected = filteredExpenses[index].id;
                         nameExpense.text = filteredExpenses[index].name;
                         typeExpense.text = filteredExpenses[index].type;
                         amountExpense.text =
                             filteredExpenses[index].amount.toString();
+                        _isEditing = true;
                       });
                     },
                   ));
